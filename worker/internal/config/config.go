@@ -58,22 +58,6 @@ func (db DatabaseConfig) GetConnStr() string {
 		db.User, db.Password, db.Host, db.Port, db.Name)
 }
 
-func (kafka KafkaConfig) GetKafkaBrokers() string {
-	return kafka.Brokers
-}
-
-func (kafka KafkaConfig) GetKafkaTopic() string {
-	return kafka.Topic
-}
-
-func (worker WorkerConfig) GetNumWorkers() int {
-	return worker.NumWorkers
-}
-
-func (worker WorkerConfig) GetLogLevel() string {
-	return worker.LogLevel
-}
-
 func getEnvOrFatal(key string) string {
 	val := os.Getenv(key)
 	if val == "" {

@@ -15,7 +15,7 @@ func NewTaskHandler(service service.TaskService) *taskHandler {
 }
 
 func (h *taskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
-
+	h.service.CreateTask(r.Context(), "123")
 }
 
 func (h *taskHandler) GetTaskByID(w http.ResponseWriter, r *http.Request) {

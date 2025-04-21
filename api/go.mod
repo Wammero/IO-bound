@@ -1,6 +1,6 @@
 module github.com/Wammero/IO-bound/api
 
-go 1.22.0
+go 1.23.1
 
 require (
 	github.com/confluentinc/confluent-kafka-go/v2 v2.10.0
@@ -26,5 +26,3 @@ require (
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 )
-
-toolchain go1.23.1
