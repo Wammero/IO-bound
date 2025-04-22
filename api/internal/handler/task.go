@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/Wammero/IO-bound/api/internal/service"
+	"github.com/Wammero/IO-bound/api/pkg/responsemaker"
+	"github.com/google/uuid"
 )
 
 type taskHandler struct {
@@ -15,9 +17,21 @@ func NewTaskHandler(service service.TaskService) *taskHandler {
 }
 
 func (h *taskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
-	h.service.CreateTask(r.Context(), "123")
+	id := uuid.New().String()
+	err := h.service.CreateTask(r.Context(), id, "test", `"test"`)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
 }
 
 func (h *taskHandler) GetTaskByID(w http.ResponseWriter, r *http.Request) {
-
+	id := r.URL.Query().Get("id")
+	task, err := h.service.GetTaskByID(r.Context(), id)
+	if err != nil {
+		responsemaker.WriteJSONError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	responsemaker.WriteJSONResponse(w, task, http.StatusOK)
 }

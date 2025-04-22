@@ -24,7 +24,13 @@ type DatabaseConfig struct {
 type KafkaConfig struct {
 	Brokers string
 	GroupID string
-	Topic   string
+	Topics  KafkaTopics
+}
+
+type KafkaTopics struct {
+	Topic1 string
+	Topic2 string
+	Topic3 string
 }
 
 type WorkerConfig struct {
@@ -44,7 +50,11 @@ func NewConfig() *Config {
 		Kafka: KafkaConfig{
 			Brokers: getEnvOrFatal("KAFKA_BROKERS"),
 			GroupID: getEnvOrFatal("KAFKA_GROUP_ID"),
-			Topic:   getEnvOrFatal("KAFKA_TOPIC"),
+			Topics: KafkaTopics{
+				Topic1: getEnvOrFatal("KAFKA_TOPIC_1"),
+				Topic2: getEnvOrFatal("KAFKA_TOPIC_2"),
+				Topic3: getEnvOrFatal("KAFKA_TOPIC_3"),
+			},
 		},
 		Worker: WorkerConfig{
 			NumWorkers: getEnvIntOrFatal("WORKER_NUM_WORKERS"),

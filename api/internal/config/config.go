@@ -26,8 +26,14 @@ type ServerConfig struct {
 
 type KafkaConfig struct {
 	Brokers string
-	Topic   string
+	Topics  KafkaTopics
 	GroupID string
+}
+
+type KafkaTopics struct {
+	Topic1 string
+	Topic2 string
+	Topic3 string
 }
 
 func NewConfig() *Config {
@@ -44,7 +50,11 @@ func NewConfig() *Config {
 		},
 		Kafka: KafkaConfig{
 			Brokers: getEnvOrFatal("KAFKA_BROKERS"),
-			Topic:   getEnvOrFatal("KAFKA_TOPIC"),
+			Topics: KafkaTopics{
+				Topic1: getEnvOrFatal("KAFKA_TOPIC_1"),
+				Topic2: getEnvOrFatal("KAFKA_TOPIC_2"),
+				Topic3: getEnvOrFatal("KAFKA_TOPIC_3"),
+			},
 			GroupID: getEnvOrFatal("KAFKA_GROUP_ID"),
 		},
 	}
@@ -53,18 +63,6 @@ func NewConfig() *Config {
 func (db DatabaseConfig) GetConnStr() string {
 	return fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable",
 		db.User, db.Password, db.Host, db.Port, db.Name)
-}
-
-func (kafka KafkaConfig) GetKafkaBrokers() string {
-	return kafka.Brokers
-}
-
-func (kafka KafkaConfig) GetTopic() string {
-	return kafka.Topic
-}
-
-func (kafka KafkaConfig) GetGroupID() string {
-	return kafka.GroupID
 }
 
 func getEnvOrFatal(key string) string {

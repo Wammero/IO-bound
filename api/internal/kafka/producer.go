@@ -1,82 +1,106 @@
 package kafka
 
 import (
+	"context"
 	"fmt"
 	"log"
-	"time"
+	"sync"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
-const (
-	flushTimeout = 15 * 1000 // in milliseconds
-)
-
 type Producer struct {
-	producer *kafka.Producer
+	producer     *kafka.Producer
+	deliveryWg   sync.WaitGroup
+	deliveryChan chan *kafka.Message
+	closeOnce    sync.Once
+	ctx          context.Context
+	cancel       context.CancelFunc
 }
 
-// New создает нового Kafka-продюсера
-func New(brokers string) (*Producer, error) {
+type Message struct {
+	Topic string
+	Key   string
+	Value []byte
+}
+
+func New(brokers string, bufferSize int) (*Producer, error) {
 	p, err := kafka.NewProducer(&kafka.ConfigMap{
-		"bootstrap.servers": brokers, // Исправлен ключ
+		"bootstrap.servers": brokers,
 		"acks":              "all",
 		"linger.ms":         5,
-		"retries":           3,
+		"retries":           5,
 		"retry.backoff.ms":  250,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create producer: %w", err)
 	}
 
-	return &Producer{producer: p}, nil
+	ctx, cancel := context.WithCancel(context.Background())
+
+	prod := &Producer{
+		producer:     p,
+		deliveryChan: make(chan *kafka.Message, bufferSize),
+		ctx:          ctx,
+		cancel:       cancel,
+	}
+
+	prod.deliveryWg.Add(1)
+	go prod.handleDelivery()
+
+	return prod, nil
 }
 
-// SendMessage отправляет сообщение в указанный топик Kafka
-func (p *Producer) SendMessage(topic string, key string, value []byte) error {
+func (p *Producer) Produce(msg Message) error {
 	kafkaMsg := &kafka.Message{
 		TopicPartition: kafka.TopicPartition{
-			Topic:     &topic,
+			Topic:     &msg.Topic,
 			Partition: kafka.PartitionAny,
 		},
-		Value: value,
-		Key:   []byte(key),
+		Key:   []byte(msg.Key),
+		Value: msg.Value,
 	}
 
-	deliveryChan := make(chan kafka.Event, 1)
-	defer close(deliveryChan)
-
-	if err := p.producer.Produce(kafkaMsg, deliveryChan); err != nil {
-		return fmt.Errorf("failed to produce message: %w", err)
+	err := p.producer.Produce(kafkaMsg, nil)
+	if err != nil {
+		log.Printf("Produce error: %v", err)
+		return err
 	}
 
-	select {
-	case ev := <-deliveryChan:
-		switch msg := ev.(type) {
-		case *kafka.Message:
-			if msg.TopicPartition.Error != nil {
-				log.Printf("delivery failed: %v", msg.TopicPartition.Error)
-				return msg.TopicPartition.Error
+	return nil
+}
+
+func (p *Producer) handleDelivery() {
+	defer p.deliveryWg.Done()
+
+	for {
+		select {
+		case <-p.ctx.Done():
+			return
+		case ev := <-p.producer.Events():
+			switch e := ev.(type) {
+			case *kafka.Message:
+				if e.TopicPartition.Error != nil {
+					log.Printf("Delivery failed: %v", e.TopicPartition.Error)
+				} else {
+					log.Printf("Message delivered to %v [%d] at offset %v",
+						*e.TopicPartition.Topic,
+						e.TopicPartition.Partition,
+						e.TopicPartition.Offset,
+					)
+				}
+			default:
+				log.Printf("Ignored event: %v", e)
 			}
-			log.Printf("message delivered to topic %s [%d] at offset %v",
-				*msg.TopicPartition.Topic,
-				msg.TopicPartition.Partition,
-				msg.TopicPartition.Offset,
-			)
-			return nil
-		case kafka.Error:
-			log.Printf("kafka error event: %v", msg)
-			return msg
-		default:
-			return fmt.Errorf("unknown event type received: %T", ev)
 		}
-	case <-time.After(10 * time.Second):
-		return fmt.Errorf("timeout waiting for delivery report")
 	}
 }
 
-// Close завершает работу продюсера и очищает буферы
 func (p *Producer) Close() {
-	p.producer.Flush(flushTimeout)
-	p.producer.Close()
+	p.closeOnce.Do(func() {
+		p.cancel()
+		p.producer.Flush(5000)
+		p.producer.Close()
+		p.deliveryWg.Wait()
+	})
 }

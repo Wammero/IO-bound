@@ -6,6 +6,7 @@ require (
 	github.com/confluentinc/confluent-kafka-go/v2 v2.10.0
 	github.com/go-chi/chi v1.5.5
 	github.com/golang-migrate/migrate/v4 v4.18.2
+	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v4 v4.18.3
 )
 

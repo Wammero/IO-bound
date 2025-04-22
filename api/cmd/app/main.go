@@ -26,13 +26,14 @@ func main() {
 
 	migration.ApplyMigrations(connstr)
 
-	kafkaProducer, err := kafka.New(cfg.Kafka.Brokers)
+	const kafkaBufferSize = 1000
+	kafkaProducer, err := kafka.New(cfg.Kafka.Brokers, kafkaBufferSize)
 	if err != nil {
 		log.Fatalf("Failed to create Kafka producer: %v", err)
 	}
 	defer kafkaProducer.Close()
 
-	svc := service.New(repo, kafkaProducer, cfg.Kafka.Topic)
+	svc := service.New(repo, kafkaProducer, cfg.Kafka.Topics)
 
 	r := router.New()
 	h := handler.New(svc)
@@ -41,6 +42,6 @@ func main() {
 	server.Start(server.Config{
 		Addr:    ":" + cfg.Server.Port,
 		Handler: r,
-		Timeout: 5 * time.Second,
+		Timeout: 1 * time.Second,
 	})
 }

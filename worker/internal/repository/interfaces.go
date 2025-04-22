@@ -8,6 +8,6 @@ import (
 
 type TaskRepository interface {
 	UpdateTaskStatus(ctx context.Context, taskID string, status string) error
-	GetTaskByID(ctx context.Context, id string)
+	TaskAlreadyChecked(ctx context.Context, id string) (bool, error)
 	Pool() *pgxpool.Pool
 }

@@ -3,13 +3,10 @@ package main
 import (
 	"context"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/Wammero/IO-bound/worker/internal/config"
-	"github.com/Wammero/IO-bound/worker/internal/kafka"
 	"github.com/Wammero/IO-bound/worker/internal/repository"
+	"github.com/Wammero/IO-bound/worker/internal/task_worker"
 )
 
 func main() {
@@ -21,23 +18,6 @@ func main() {
 	}
 	defer repo.Close()
 
-	consumer, err := kafka.NewConsumer(cfg.Kafka.Brokers, cfg.Kafka.GroupID, cfg.Kafka.Topic)
-	if err != nil {
-		log.Fatalf("Failed to create consumer: %v", err)
-	}
-	defer consumer.Close()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Обрабатываем Ctrl+C
-	sigchan := make(chan os.Signal, 1)
-	signal.Notify(sigchan, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		<-sigchan
-		log.Println("Shutting down consumer...")
-		cancel()
-	}()
-	consumer.Consume(ctx)
+	taskWorker := task_worker.NewTaskWorker(repo.TaskRepository)
+	taskWorker.Start(context.Background(), cfg.Kafka.Brokers, cfg.Kafka.GroupID, cfg.Kafka.Topics.Topic1, cfg.Worker.NumWorkers, 5)
 }

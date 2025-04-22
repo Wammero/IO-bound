@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -24,6 +25,14 @@ func (r *taskRepository) UpdateTaskStatus(ctx context.Context, taskID string, st
 	return err
 }
 
-func (r *taskRepository) GetTaskByID(ctx context.Context, id string) {
+func (r *taskRepository) TaskAlreadyChecked(ctx context.Context, id string) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM tasks WHERE id = $1 AND status <> 'pending')`
 
+	var exists bool
+	err := r.pool.QueryRow(ctx, query, id).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check task existence: %v", err)
+	}
+
+	return exists, nil
 }
