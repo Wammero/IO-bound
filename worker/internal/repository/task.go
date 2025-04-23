@@ -26,7 +26,7 @@ func (r *taskRepository) UpdateTaskStatus(ctx context.Context, taskID string, st
 }
 
 func (r *taskRepository) TaskAlreadyChecked(ctx context.Context, id string) (bool, error) {
-	query := `SELECT EXISTS(SELECT 1 FROM tasks WHERE id = $1 AND status <> 'pending')`
+	query := `SELECT EXISTS(SELECT 1 FROM tasks WHERE id = $1 AND status <> 'pending' AND status <> 'in_progress')`
 
 	var exists bool
 	err := r.pool.QueryRow(ctx, query, id).Scan(&exists)

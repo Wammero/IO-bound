@@ -32,21 +32,27 @@ func (w *TaskWorker) Start(ctx context.Context, brokers string, groupID string, 
 		go func() {
 			defer wg.Done()
 			for msg := range messageChannel {
-				log.Printf(string(msg.Value))
-				checked, err := w.repo.TaskAlreadyChecked(ctx, string(msg.Key))
+				checked, err := w.repo.TaskAlreadyChecked(ctx, string(msg.Message.Key))
 				if err != nil {
 					log.Printf("Failed to check task existence: %v", err)
-					w.repo.UpdateTaskStatus(ctx, string(msg.Key), "failed")
+					w.repo.UpdateTaskStatus(ctx, string(msg.Message.Key), "failed")
 					continue
 				}
 				if !checked {
-					log.Printf("Received message: %s", string(msg.Value))
-					w.repo.UpdateTaskStatus(ctx, string(msg.Key), "in_progress")
+					log.Printf("Received message: %s", string(msg.Message.Value))
+					w.repo.UpdateTaskStatus(ctx, string(msg.Message.Key), "in_progress")
 					time.Sleep(20 * time.Second)
 					// if err != nil {
 					// 	w.repo.UpdateTaskStatus(ctx, string(msg.Key), "failed")
 					// }
-					w.repo.UpdateTaskStatus(ctx, string(msg.Key), "done")
+					w.repo.UpdateTaskStatus(ctx, string(msg.Message.Key), "done")
+					if err != nil {
+						log.Printf("Failed to commit message: %v", err)
+					}
+					_, err = msg.Consumer.CommitMessage(msg.Message)
+					if err != nil {
+						log.Printf("Failed to commit Kafka message: %v", err)
+					}
 				}
 				// else // just skip
 

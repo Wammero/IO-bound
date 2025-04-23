@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Wammero/IO-bound/worker/internal/models"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
@@ -28,8 +29,7 @@ func NewConsumer(brokers, groupID, topic string, numConsumers int) ([]*Consumer,
 			"bootstrap.servers":               brokers,
 			"group.id":                        groupID,
 			"auto.offset.reset":               "earliest",
-			"enable.auto.commit":              true,
-			"auto.commit.interval.ms":         5000,
+			"enable.auto.commit":              false,
 			"session.timeout.ms":              6000,
 			"heartbeat.interval.ms":           2000,
 			"max.poll.interval.ms":            300000,
@@ -50,7 +50,7 @@ func NewConsumer(brokers, groupID, topic string, numConsumers int) ([]*Consumer,
 	return consumers, nil
 }
 
-func (c *Consumer) Consume(ctx context.Context, messageChannel chan<- *kafka.Message, wg *sync.WaitGroup) {
+func (c *Consumer) Consume(ctx context.Context, messageChannel chan<- *models.KafkaMessage, wg *sync.WaitGroup) {
 	defer wg.Done()
 	log.Printf("Starting to consume messages from Kafka...")
 
@@ -78,7 +78,10 @@ func (c *Consumer) Consume(ctx context.Context, messageChannel chan<- *kafka.Mes
 					string(msg.Key),
 					string(msg.Value))
 
-				messageChannel <- msg
+				messageChannel <- &models.KafkaMessage{
+					Message:  msg,
+					Consumer: c.consumer,
+				}
 			}
 		}
 	}
@@ -92,13 +95,13 @@ func (c *Consumer) Close() {
 	}
 }
 
-func StartConsumers(ctx context.Context, brokers, groupID, topic string, numConsumers int) (chan *kafka.Message, error) {
+func StartConsumers(ctx context.Context, brokers, groupID, topic string, numConsumers int) (chan *models.KafkaMessage, error) {
 	consumers, err := NewConsumer(brokers, groupID, topic, numConsumers)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create consumers: %v", err)
 	}
 
-	messageChannel := make(chan *kafka.Message, 100)
+	messageChannel := make(chan *models.KafkaMessage, 100)
 
 	var wg sync.WaitGroup
 	for _, consumer := range consumers {
