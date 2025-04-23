@@ -5,6 +5,7 @@ import (
 
 	"github.com/Wammero/IO-bound/api/internal/service"
 	"github.com/Wammero/IO-bound/api/pkg/responsemaker"
+	"github.com/go-chi/chi"
 	"github.com/google/uuid"
 )
 
@@ -27,7 +28,7 @@ func (h *taskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *taskHandler) GetTaskByID(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
+	id := chi.URLParam(r, "id")
 	task, err := h.service.GetTaskByID(r.Context(), id)
 	if err != nil {
 		responsemaker.WriteJSONError(w, err.Error(), http.StatusInternalServerError)

@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"fmt"
 
 	"github.com/Wammero/IO-bound/api/internal/models"
@@ -42,14 +44,18 @@ func (r *taskRepository) GetTaskByID(ctx context.Context, id string) (*models.Ta
 
 	var task models.Task
 
+	var result sql.NullString
+	var errorText sql.NullString
+	var webhookURL sql.NullString
+
 	err := r.pool.QueryRow(ctx, query, id).Scan(
 		&task.ID,
 		&task.Type,
 		&task.Payload,
 		&task.Status,
-		&task.Result,
-		&task.Error,
-		&task.WebhookURL,
+		&result,
+		&errorText,
+		&webhookURL,
 		&task.WebhookSent,
 		&task.CreatedAt,
 		&task.UpdatedAt,
@@ -60,6 +66,16 @@ func (r *taskRepository) GetTaskByID(ctx context.Context, id string) (*models.Ta
 			return nil, fmt.Errorf("task with id %s not found", id)
 		}
 		return nil, fmt.Errorf("failed to get task: %v", err)
+	}
+
+	if result.Valid {
+		task.Result = json.RawMessage(result.String)
+	}
+	if errorText.Valid {
+		task.Error = errorText.String
+	}
+	if webhookURL.Valid {
+		task.WebhookURL = webhookURL.String
 	}
 
 	return &task, nil
