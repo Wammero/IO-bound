@@ -18,12 +18,12 @@ func NewTaskHandler(service service.TaskService) *taskHandler {
 
 func (h *taskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	id := uuid.New().String()
-	err := h.service.CreateTask(r.Context(), id, "test", `"test"`)
+	id, err := h.service.CreateTask(r.Context(), id, "test", `"test"`)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
+	responsemaker.WriteJSONResponse(w, id, http.StatusCreated)
 }
 
 func (h *taskHandler) GetTaskByID(w http.ResponseWriter, r *http.Request) {

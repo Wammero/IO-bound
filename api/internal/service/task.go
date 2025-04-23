@@ -24,10 +24,10 @@ func NewTaskService(repo repository.TaskRepository, producer *kafka.Producer, to
 	}
 }
 
-func (s *taskService) CreateTask(ctx context.Context, id, taskType, payload string) error {
+func (s *taskService) CreateTask(ctx context.Context, id, taskType, payload string) (string, error) {
 	tx, err := s.repo.Pool().Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("не удалось начать транзакцию: %v", err)
+		return "", fmt.Errorf("не удалось начать транзакцию: %v", err)
 	}
 	defer func() {
 		if err != nil {
@@ -38,7 +38,7 @@ func (s *taskService) CreateTask(ctx context.Context, id, taskType, payload stri
 	}()
 	err = s.repo.CreateTask(ctx, tx, id, taskType, payload)
 	if err != nil {
-		return fmt.Errorf("не удалось создать задачу: %v", err)
+		return "", fmt.Errorf("не удалось создать задачу: %v", err)
 	}
 	message := id
 	err = s.producer.Produce(kafka.Message{
@@ -47,9 +47,9 @@ func (s *taskService) CreateTask(ctx context.Context, id, taskType, payload stri
 		Value: []byte(message),
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return id, nil
 }
 
 func (s *taskService) GetTaskByID(ctx context.Context, id string) (*models.Task, error) {
