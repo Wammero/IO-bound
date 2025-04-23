@@ -1,0 +1,118 @@
+openapi: 3.0.0
+info:
+  title: I/O bound
+  description: Сервис для создания тасок и получения их состояния
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        payload:
+          type: object
+        status:
+          type: string
+          enum: [pending, in_progress, done, failed]
+        result:
+          type: object
+          nullable: true
+        error:
+          type: string
+          nullable: true
+        webhook_url:
+          type: string
+          nullable: true
+        webhook_sent:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, type, payload, status, webhook_sent, created_at, updated_at]
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+paths:
+  /tasks:
+    post:
+      summary: Создание задачи
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                payload:
+                  type: object
+                webhook_url:
+                  type: string
+              required: [type, payload]
+      responses:
+        '200':
+          description: Успешное создание задачи
+          content:
+            application/json:
+              schema:
+                type: string
+                format: uuid
+        '400':
+          description: Неверный запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/{id}:
+    get:
+      summary: Получение информации о задаче по ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация о задаче
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '404':
+          description: Задача не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
